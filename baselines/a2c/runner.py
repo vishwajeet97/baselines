@@ -17,31 +17,44 @@ class Runner(AbstractEnvRunner):
         self.gamma = gamma
         self.batch_action_shape = [x if x is not None else -1 for x in model.train_model.action.shape.as_list()]
         self.ob_dtype = model.train_model.X.dtype.as_numpy_dtype
+        self.timestep = 0
 
-    def run(self):
+    def run(self, di):
         # We initialize the lists that will contain the mb of experiences
         mb_obs, mb_rewards, mb_actions, mb_values, mb_dones = [],[],[],[],[]
         mb_states = self.states
         for n in range(self.nsteps):
-            # Given observations, take action and value (V(s))
-            # We already have self.obs because Runner superclass run self.obs[:] = env.reset() on init
-            actions, values, states, _ = self.model.step(self.obs, S=self.states, M=self.dones)
+            di_reward = 0
+            for dt in range(di):
+                # Given observations, take action and value (V(s))
+                # We already have self.obs because Runner superclass run self.obs[:] = env.reset() on init
+                if dt == 0:
+                    self.di_obs = np.copy(self.obs)
+                    self.di_actions, self.di_values, states, _ = self.model.step(self.obs, S=self.states, M=self.dones)
+                    # import pdb; pdb.set_trace()    
 
+                obs, rewards, dones, _ = self.env.step(self.di_actions)
+                di_reward += rewards * (self.gamma ** dt)
+
+                # Take actions in env and look the results
+
+                self.states = states
+                self.dones = dones
+                # self.dones = list(map(lamda x, y: x or y, self.dones, dones))
+                if self.dones[0]:
+                    self.timestep = 0
+                    self.obs[0] = self.obs[0]*0
+                    break
+                self.obs = obs
+
+                self.timestep += 1
             # Append the experiences
-            mb_obs.append(np.copy(self.obs))
-            mb_actions.append(actions)
-            mb_values.append(values)
+            mb_obs.append(np.copy(self.di_obs))
+            mb_actions.append(self.di_actions)
+            mb_values.append(self.di_values)
             mb_dones.append(self.dones)
+            mb_rewards.append(di_reward)
 
-            # Take actions in env and look the results
-            obs, rewards, dones, _ = self.env.step(actions)
-            self.states = states
-            self.dones = dones
-            for n, done in enumerate(dones):
-                if done:
-                    self.obs[n] = self.obs[n]*0
-            self.obs = obs
-            mb_rewards.append(rewards)
         mb_dones.append(self.dones)
 
         # Batch of steps to batch of rollouts

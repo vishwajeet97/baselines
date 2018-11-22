@@ -117,16 +117,17 @@ class Model(object):
 def learn(
     network,
     env,
+    di=3,
     seed=None,
     nsteps=5,
-    total_timesteps=int(80e6),
+    total_timesteps=int(6000),
     vf_coef=0.5,
     ent_coef=0.01,
     max_grad_norm=0.5,
     lr=7e-4,
     lrschedule='linear',
     epsilon=1e-5,
-    alpha=0.99,
+    alpha=0.9,
     gamma=0.99,
     log_interval=100,
     load_path=None,
@@ -185,6 +186,7 @@ def learn(
 
     # Get the nb of env
     nenvs = env.num_envs
+    # import pdb ; pdb.set_trace()
     policy = build_policy(env, network, **network_kwargs)
 
     # Instantiate the model object (that creates step_model and train_model)
@@ -203,8 +205,11 @@ def learn(
     tstart = time.time()
 
     for update in range(1, total_timesteps//nbatch+1):
+
         # Get mini batch of experiences
-        obs, states, rewards, masks, actions, values = runner.run()
+        obs, states, rewards, masks, actions, values = runner.run(di)
+        # if states:
+            # import pdb; pdb.set_trace()
 
         policy_loss, value_loss, policy_entropy = model.train(obs, states, rewards, masks, actions, values)
         nseconds = time.time()-tstart
@@ -221,6 +226,7 @@ def learn(
             logger.record_tabular("policy_entropy", float(policy_entropy))
             logger.record_tabular("value_loss", float(value_loss))
             logger.record_tabular("explained_variance", float(ev))
+            # logger.record_tabular("eprewmean", float(eprewmean))
             logger.dump_tabular()
     return model
 

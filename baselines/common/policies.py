@@ -39,7 +39,7 @@ class PolicyWithValue(object):
         self.__dict__.update(tensors)
 
         vf_latent = vf_latent if vf_latent is not None else latent
-
+        # import pdb ; pdb.set_trace()    
         vf_latent = tf.layers.flatten(vf_latent)
         latent = tf.layers.flatten(latent)
 
@@ -150,7 +150,7 @@ def build_policy(env, policy_network, value_network=None,  normalize_observation
                     policy_latent, recurrent_tensors = policy_network(encoded_x, nenv)
                     extra_tensors.update(recurrent_tensors)
 
-
+        # import pdb ; pdb.set_trace()
         _v_net = value_network
 
         if _v_net is None or _v_net == 'shared':
